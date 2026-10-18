@@ -53,14 +53,31 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Docker image
+
+      - name: Build Docker image locally
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
+          load: true
           tags: |
             sadokslamaesprit/petclinic:latest
             sadokslamaesprit/petclinic:${{ github.sha }}
+
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: sadokslamaesprit/petclinic:latest
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Push Docker image to Docker Hub
+        run: |
+          docker push sadokslamaesprit/petclinic:latest
+          docker push sadokslamaesprit/petclinic:${{ github.sha }}
+  
 
   deploy:
     name: Deploy to Ubuntu VM
