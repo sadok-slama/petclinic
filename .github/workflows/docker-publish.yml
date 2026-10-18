@@ -1,5 +1,5 @@
 
-name: Build and Publish PetClinic Docker Image
+name: PetClinic CI/CD
 
 on:
   push:
@@ -7,8 +7,12 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-and-push:
+    name: Build, Test and Publish
     runs-on: ubuntu-latest
 
     steps:
@@ -57,3 +61,29 @@ jobs:
           tags: |
             sadokslamaesprit/petclinic:latest
             sadokslamaesprit/petclinic:${{ github.sha }}
+
+  deploy:
+    name: Deploy to Ubuntu VM
+    needs: build-and-push
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Pull image and deploy application
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          PETCLINIC_DB_PASSWORD: ${{ secrets.PETCLINIC_DB_PASSWORD }}
+        run: |
+          docker compose \
+            -f docker-compose.deploy.yml \
+            pull
+
+          docker compose \
+            -f docker-compose.deploy.yml \
+            up -d --remove-orphans
+
+          docker compose \
+            -f docker-compose.deploy.yml \
+            ps
